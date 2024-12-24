@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from models import User
@@ -10,7 +11,7 @@ class UserCreate(BaseModel):
     username: str
     password: str
     role: str
-    team_lead_id: int | None = None
+    team_lead_username: Optional[str] = None
 
     @validator("role")
     def validate_role(cls, role):
@@ -20,28 +21,42 @@ class UserCreate(BaseModel):
         return role
 
 
+
 router = APIRouter()
 
 
 @router.post("/register", tags=["Auth"])
 def register(user: UserCreate, db: Session = Depends(get_db)):
+
     existing_user = db.query(User).filter(User.username == user.username).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already exists",
         )
+    
+    team_lead_id = None
+    if user.role == "hr" and user.team_lead_id:
+        team_lead = db.query(User).filter(User.username == user.team_lead_id).first()
+        if not team_lead:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Team Lead username not found",
+            )
+        team_lead_id = team_lead.user_id
+
     hashed_password = hash_password(user.password)
     new_user = User(
         username=user.username,
         password_hash=hashed_password,
         role=user.role,
-        team_lead_id=user.team_lead_id,
+        team_lead_id=team_lead_id,
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return {"message": "User registered successfully", "user_id": new_user.user_id}
+
 
 
 @router.post("/login", tags=["Auth"])

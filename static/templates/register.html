@@ -3,35 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register Page</title>
+    <title>Register</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="container">
-        <div class="form-container">
-            <h1>Register</h1>
-            <form id="register-form">
-                <div class="input-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" placeholder="Enter your username" required>
-                </div>
-                <div class="input-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
-                </div>
-                <div class="input-group">
-                    <label for="role">Role</label>
-                    <select id="role" name="role" required>
-                        <option value="hr">HR</option>
-                        <option value="team_lead_hr">Team Lead HR</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn">Register</button>
-            </form>
-            <div class="back-link">
-                <p>Already have an account? <a href="/">Go back to Login</a></p>
+        <h2>Register</h2>
+        <form id="register-form" action="/api/v1/register" method="POST">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            
+            <label for="role">Role</label>
+            <select id="role" name="role" required>
+                <option value="team_lead_hr">Team Lead HR</option>
+                <option value="hr">HR</option>
+            </select>
+            
+
+            <div id="team-lead-field" style="display: none;">
+                <label for="team-lead-username">Team Lead Username</label>
+                <input type="text" id="team-lead-username" name="team_lead_username" placeholder="Enter Team Lead username">
             </div>
-        </div>
+            
+            <button type="submit" class='btn'>Register</button>
+        </form>
+        <p>Already have an account? <a href="/">Go back to Login</a></p>
     </div>
+
+    <script>
+        
+        document.getElementById('role').addEventListener('change', function () {
+            const teamLeadField = document.getElementById('team-lead-field');
+            if (this.value === 'hr') {
+                teamLeadField.style.display = 'block';
+            } else {
+                teamLeadField.style.display = 'none';
+            }
+        });
+    </script>
 </body>
 </html>
