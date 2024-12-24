@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models import Resumes, User, Vacancies
 from database import get_db
-from auth import require_role
+from routers.auth import require_role
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date

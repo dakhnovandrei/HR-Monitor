@@ -1,28 +1,32 @@
-document.getElementById('login-form').addEventListener('submit', async (event) => {
+document.getElementById("login-form").addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
 
     try {
-        const response = await fetch('/api/v1/login', {
-            method: 'POST',
+        const response = await fetch("/api/v1/login", {
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json"
             },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify(data)
         });
 
         if (response.ok) {
-            const data = await response.json();
-            alert('Login successful!');
-            console.log(data);
+            const result = await response.json();
+
+            if (result.role === "hr") {
+                window.location.href = "/static/templates/vacancies.html";
+            } else if (result.role === "team_lead_hr") {
+                window.location.href = "/static/templates/dashboard.html";
+            }
         } else {
             const error = await response.json();
             alert(`Error: ${error.detail}`);
         }
-    } catch (error) {
-        alert('An error occurred. Please try again.');
-        console.error(error);
+    } catch (err) {
+        console.error("Login failed:", err);
+        alert("Login failed: Unable to connect to the server.");
     }
 });

@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from models import User
-from auth import verify_password, create_access_token, hash_password
+from routers.auth import verify_password, create_access_token, hash_password
 from database import get_db
 from pydantic import BaseModel, validator
 
@@ -27,7 +27,7 @@ router = APIRouter()
 
 @router.post("/register", tags=["Auth"])
 def register(user: UserCreate, db: Session = Depends(get_db)):
-
+    print(user.dict())
     existing_user = db.query(User).filter(User.username == user.username).first()
     if existing_user:
         raise HTTPException(
@@ -36,13 +36,12 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         )
     
     team_lead_id = None
-    if user.role == "hr" and user.team_lead_id:
-        team_lead = db.query(User).filter(User.username == user.team_lead_id).first()
+    if user.role == "hr":
+        if not user.team_lead_username:
+            raise HTTPException(status_code=400, detail="Team lead username is required for HR role")
+        team_lead = db.query(User).filter(User.username == user.team_lead_username).first()
         if not team_lead:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Team Lead username not found",
-            )
+            raise HTTPException(status_code=404, detail="Team lead username not found")
         team_lead_id = team_lead.user_id
 
     hashed_password = hash_password(user.password)
@@ -59,14 +58,20 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 
 
+
 @router.post("/login", tags=["Auth"])
 def login(username: str, password: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username).first()
     if not user or not verify_password(password, user.password_hash):
         raise HTTPException(
-            status_code=401,
-            detail="Invalid username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_401_UNAUTHORIZED,  
+            detail="Invalid username or password",  
+            headers={"WWW-Authenticate": "Bearer"},  
         )
+    
     token = create_access_token({"user_id": user.user_id})
-    return {"access_token": token, "token_type": "bearer"}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": user.role 
+    }

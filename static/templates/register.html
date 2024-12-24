@@ -9,40 +9,74 @@
 <body>
     <div class="container">
         <h2>Register</h2>
-        <form id="register-form" action="/api/v1/register" method="POST">
+        <form id="register-form">
             <label for="username">Username</label>
-            <input type="text" id="username" name="username" placeholder="Enter your username" required>
-            
+            <input type="text" id="username" name="username" required>
+        
             <label for="password">Password</label>
-            <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            <input type="password" id="password" name="password" required>
             
+        
             <label for="role">Role</label>
             <select id="role" name="role" required>
-                <option value="team_lead_hr">Team Lead HR</option>
                 <option value="hr">HR</option>
+                <option value="team_lead_hr">HR Team Lead</option>
             </select>
-            
-
-            <div id="team-lead-field" style="display: none;">
-                <label for="team-lead-username">Team Lead Username</label>
-                <input type="text" id="team-lead-username" name="team_lead_username" placeholder="Enter Team Lead username">
-            </div>
-            
-            <button type="submit" class='btn'>Register</button>
-        </form>
-        <p>Already have an account? <a href="/">Go back to Login</a></p>
-    </div>
-
-    <script>
         
-        document.getElementById('role').addEventListener('change', function () {
-            const teamLeadField = document.getElementById('team-lead-field');
-            if (this.value === 'hr') {
-                teamLeadField.style.display = 'block';
-            } else {
-                teamLeadField.style.display = 'none';
-            }
-        });
-    </script>
+            <label for="team_lead_username" id="team_lead_label" style="display: none;">Team Lead Username</label>
+            <input type="text" id="team_lead_username" name="team_lead_username" style="display: none;">
+        
+            <button type="submit">Register</button>
+        </form>
+        
+        <script>
+            document.getElementById("register-form").addEventListener("submit", async (event) => {
+                event.preventDefault();
+        
+                const formData = {
+                    username: document.getElementById("username").value,
+                    password: document.getElementById("password").value,
+                    role: document.getElementById("role").value,
+                    team_lead_username: document.getElementById("role").value === "hr" 
+                        ? document.getElementById("team_lead_username").value 
+                        : null,
+                };
+        
+                try {
+                    const response = await fetch("/api/v1/register", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(formData),
+                    });
+        
+                    if (response.ok) {
+                        alert("Registration successful!");
+                        window.location.href = "/static/templates/index.html";
+                    } else {
+                        const error = await response.json();
+                        console.error(error);
+                        alert(`Error: ${error.detail || "An unknown error occurred"}`);
+                    }
+                } catch (err) {
+                    console.error("Error:", err);
+                    alert("An error occurred while processing your request.");
+                }
+            });
+        
+            document.getElementById("role").addEventListener("change", (event) => {
+                const teamLeadInput = document.getElementById("team_lead_username");
+                const teamLeadLabel = document.getElementById("team_lead_label");
+                if (event.target.value === "hr") {
+                    teamLeadInput.style.display = "block";
+                    teamLeadLabel.style.display = "block";
+                } else {
+                    teamLeadInput.style.display = "none";
+                    teamLeadLabel.style.display = "none";
+                }
+            });
+        </script>
+        
 </body>
 </html>

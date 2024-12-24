@@ -4,7 +4,7 @@ from models import Vacancies, User, Resumes
 from pydantic import BaseModel
 from typing import Optional
 from database import get_db
-from auth import require_role
+from routers.auth import require_role
 
 router_vac = APIRouter()
 
@@ -60,3 +60,19 @@ def get_statistics(
         .all()
     )
     return {"statistics": hr_statistics}
+
+@router_vac.get("/vacancies", tags=["Vacancies"])
+def get_vacancies(
+    current_user: User = Depends(require_role(["hr", "team_lead_hr"])),
+    db: Session = Depends(get_db)
+):
+    vacancies = db.query(Vacancies).filter(Vacancies.status == "open").all()
+    return [
+        {
+            "vacancy_id": vacancy.vacancy_id,
+            "title": vacancy.title,
+            "description": vacancy.description,
+            "status": vacancy.status,
+        }
+        for vacancy in vacancies
+    ]
