@@ -1,10 +1,12 @@
+import datetime
+from sqlalchemy import func
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from models import Vacancies, User, Resumes
+from src.models import Vacancies, User, Resumes
 from pydantic import BaseModel
 from typing import Optional
-from database import get_db
-from routers.auth import require_role
+from src.database import get_db
+from src.routers.auth import require_role, get_current_user
 
 router_vac = APIRouter()
 
@@ -31,29 +33,32 @@ class StatisticsResponse(BaseModel):
 
 @router_vac.post("/create-vacancy", tags=["Vacancies"])
 def create_vacancy(
-        vacancy: VacancyCreate,
-        current_user: User = Depends(require_role(["team_lead_hr"])),
-        db: Session = Depends(get_db)
+    vacancy: VacancyCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     new_vacancy = Vacancies(
         title=vacancy.title,
         description=vacancy.description,
         created_by=current_user.user_id,
-        status=vacancy.status,
+        created_date=datetime.datetime.utcnow(),
     )
     db.add(new_vacancy)
     db.commit()
     db.refresh(new_vacancy)
-    return {"message": "Vacancy created successfully", "vacancy_id": new_vacancy.vacancy_id}
+    return {
+        "message": "Vacancy created successfully",
+        "vacancy_id": new_vacancy.vacancy_id,
+    }
 
 
 @router_vac.get("/statistics", tags=["Statistics"])
 def get_statistics(
-        current_user: User = Depends(require_role(["team_lead_hr"])),
-        db: Session = Depends(get_db)
+    current_user: User = Depends(require_role(["team_lead_hr"])),
+    db: Session = Depends(get_db),
 ):
     hr_statistics = (
-        db.query(User.username, Resumes.current_stage, db.func.count(Resumes.resume_id))
+        db.query(User.username, Resumes.current_stage, func.count(Resumes.resume_id))
         .join(Resumes, User.user_id == Resumes.hr_id)
         .filter(User.team_lead_id == current_user.user_id)
         .group_by(User.username, Resumes.current_stage)
@@ -61,10 +66,11 @@ def get_statistics(
     )
     return {"statistics": hr_statistics}
 
+
 @router_vac.get("/vacancies", tags=["Vacancies"])
 def get_vacancies(
     current_user: User = Depends(require_role(["hr", "team_lead_hr"])),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     vacancies = db.query(Vacancies).filter(Vacancies.status == "open").all()
     return [

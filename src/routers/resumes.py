@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from models import Resumes, User, Vacancies
-from database import get_db
-from routers.auth import require_role
+from src.models import Resumes, User, Vacancies
+from src.database import get_db
+from src.routers.auth import require_role
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
@@ -36,11 +36,13 @@ router_res = APIRouter()
 
 @router_res.post("/upload-resume", tags=["Resumes"])
 def upload_resume(
-        resume: ResumeCreate,
-        current_user: User = Depends(require_role(["hr"])),
-        db: Session = Depends(get_db)
+    resume: ResumeCreate,
+    current_user: User = Depends(require_role(["hr"])),
+    db: Session = Depends(get_db),
 ):
-    vacancy = db.query(Vacancies).filter(Vacancies.vacancy_id == resume.vacancy_id).first()
+    vacancy = (
+        db.query(Vacancies).filter(Vacancies.vacancy_id == resume.vacancy_id).first()
+    )
     if not vacancy:
         raise HTTPException(status_code=404, detail="Vacancy not found")
 
@@ -53,14 +55,17 @@ def upload_resume(
     db.add(new_resume)
     db.commit()
     db.refresh(new_resume)
-    return {"message": "Resume uploaded successfully", "resume_id": new_resume.resume_id}
+    return {
+        "message": "Resume uploaded successfully",
+        "resume_id": new_resume.resume_id,
+    }
 
 
 @router_res.get("/resumes", tags=["Resumes"])
 def get_resumes(
-        filters: FilterParams = Depends(),
-        current_user: User = Depends(require_role(["hr"])),
-        db: Session = Depends(get_db)
+    filters: FilterParams = Depends(),
+    current_user: User = Depends(require_role(["hr"])),
+    db: Session = Depends(get_db),
 ):
     query = db.query(Resumes).filter(Resumes.hr_id == current_user.user_id)
 
