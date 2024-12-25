@@ -45,7 +45,7 @@ class Vacancies(Base):
     title = Column(String(100), nullable=False)
     description = Column(Text)
     created_by = Column(Integer, ForeignKey("users.user_id"), nullable=False)
-    created_date = Column(Date, default=datetime.datetime.utcnow())
+    created_date = Column(Date, default=datetime.datetime.utcnow(), nullable=False)
     status = Column(Enum(VacancyStatusEnum), default=VacancyStatusEnum.open)
 
 

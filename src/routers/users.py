@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from src.models import User
 from src.routers.auth import (
     create_access_token,
-    hash_password,
     pwd_context,
     create_refresh_token,
 )
@@ -58,7 +57,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     #         raise HTTPException(status_code=404, detail="Team lead username not found")
     #     team_lead_id = team_lead.user_id
 
-    hashed_password = hash_password(user.password)
+    hashed_password = pwd_context.hash(user.password)
     new_user = User(
         username=user.username,
         password_hash=hashed_password,

@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from src.models import Resumes, User, Vacancies
+from src.models import Resumes, User, Vacancies, StageEnum
 from src.database import get_db
 from src.routers.auth import require_role
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
+import datetime
+from sqlalchemy.sql import func
 
+class UpdateStageRequest(BaseModel):
+    resume_id: int
+    new_stage: StageEnum
 
 class ResumeCreate(BaseModel):
     vacancy_id: int
@@ -80,3 +85,101 @@ def get_resumes(
 
     resumes = query.all()
     return resumes
+
+@router_res.get("/statistics/hr", tags=["Statistics"])
+def hr_statistics(
+    current_user = Depends(require_role(["hr"])),
+    db: Session = Depends(get_db),
+):
+   
+    avg_stage_time = (
+        db.query(
+            Resumes.current_stage,
+            func.avg(
+                func.extract(
+                    'epoch', func.age(Resumes.status_change_date, Resumes.upload_date)
+                ) / 86400.0  
+            ).label("avg_time"),
+        )
+        .filter(Resumes.hr_id == current_user.user_id)
+        .group_by(Resumes.current_stage)
+        .all()
+    )
+
+    resume_stage_distribution = (
+        db.query(
+            Resumes.current_stage,
+            func.count(Resumes.resume_id).label("count"),
+        )
+        .filter(Resumes.hr_id == current_user.user_id)
+        .group_by(Resumes.current_stage)
+        .all()
+    )
+
+
+    resume_source_distribution = (
+        db.query(
+            Resumes.source,
+            func.count(Resumes.resume_id).label("count"),
+        )
+        .filter(Resumes.hr_id == current_user.user_id)
+        .group_by(Resumes.source)
+        .all()
+    )
+
+   
+    avg_candidates_per_vacancy = (
+        db.query(
+            func.avg(
+                db.query(func.count(Resumes.resume_id))
+                .filter(Resumes.vacancy_id == Vacancies.vacancy_id)
+                .correlate(Vacancies)
+                .as_scalar()
+            ).label("avg_candidates")
+        )
+        .filter(Vacancies.created_by == current_user.user_id)
+        .scalar()
+    )
+
+    return {
+        "avg_stage_time": [
+            {"stage": row[0], "avg_time_days": round(row[1], 2) if row[1] else 0}
+            for row in avg_stage_time
+        ],
+        "resume_stage_distribution": [
+            {"stage": row[0], "count": row[1]} for row in resume_stage_distribution
+        ],
+        "resume_source_distribution": [
+            {"source": row[0] or "Unknown", "count": row[1]} for row in resume_source_distribution
+        ],
+        "avg_candidates_per_vacancy": round(avg_candidates_per_vacancy, 2)
+        if avg_candidates_per_vacancy
+        else 0,
+    }
+@router_res.put("/resumes/update-stage", tags=["Resumes"])
+def update_resume_stage(
+    update_request: UpdateStageRequest,
+    current_user = Depends(require_role(["hr"])),
+    db: Session = Depends(get_db),
+):
+
+    resume = db.query(Resumes).filter(Resumes.resume_id == update_request.resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    if current_user.role == "hr" and resume.hr_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    
+    resume.current_stage = update_request.new_stage
+    resume.status_change_date = datetime.datetime.utcnow()
+
+    db.commit()
+    db.refresh(resume)
+
+    return {
+        "message": "Resume stage updated successfully",
+        "resume_id": resume.resume_id,
+        "new_stage": resume.current_stage,
+        "status_change_date": resume.status_change_date,
+    }

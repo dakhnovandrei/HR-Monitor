@@ -34,7 +34,7 @@ class StatisticsResponse(BaseModel):
 @router_vac.post("/create-vacancy", tags=["Vacancies"])
 def create_vacancy(
     vacancy: VacancyCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role(["team_lead_hr"])),
     db: Session = Depends(get_db),
 ):
     new_vacancy = Vacancies(
@@ -69,7 +69,7 @@ def get_statistics(
 
 @router_vac.get("/vacancies", tags=["Vacancies"])
 def get_vacancies(
-    current_user: User = Depends(require_role(["hr", "team_lead_hr"])),
+    current_user: User = Depends(require_role(["team_lead_hr"])),
     db: Session = Depends(get_db),
 ):
     vacancies = db.query(Vacancies).filter(Vacancies.status == "open").all()
