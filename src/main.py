@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from database import engine, Base
-from routers.users import router
-from routers.resumes import router_res
-from routers.vacancies import router_vac
+from src.users import router
+from src.resumes import router_res
+from src.vacancies import router_vac
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
